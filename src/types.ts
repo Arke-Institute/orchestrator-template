@@ -4,7 +4,7 @@ import type { OrchestratorOptions } from './config';
 export interface JobRequest {
   job_id: string;
   target: string;
-  log: { pi: string; type: 'file' };
+  job_collection: string; // Where to write logs
   input: {
     entity_ids: string[];
     options?: OrchestratorOptions;
@@ -38,7 +38,7 @@ export interface JobState {
   status: 'pending' | 'running' | 'done' | 'error';
 
   target: string;
-  log_pi: string;
+  job_collection: string;
   api_base: string;
   expires_at: string;
   options?: OrchestratorOptions;

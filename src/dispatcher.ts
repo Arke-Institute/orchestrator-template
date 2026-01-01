@@ -23,6 +23,7 @@ export async function dispatchToSubAgent(
   client: ArkeClient,
   target: string,
   entityId: string,
+  jobCollection: string,
   options?: OrchestratorOptions
 ): Promise<DispatchResult> {
   try {
@@ -30,6 +31,7 @@ export async function dispatchToSubAgent(
       params: { path: { id: SUB_AGENT_ID } },
       body: {
         target,
+        job_collection: jobCollection, // Pass parent job collection - sub-agent gets its own sub-collection
         input: buildSubAgentInput(entityId, options),
         expires_in: 3600, // 1 hour for sub-agent permissions
         confirm: true,

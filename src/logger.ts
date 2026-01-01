@@ -50,56 +50,125 @@ export class JobLogger {
   }
 }
 
-// Write log to the log file entity via Arke API (orchestrator version with entity_results)
+export interface OrchestratorLogData {
+  job_id: string;
+  agent_id: string;
+  agent_version: string;
+  started_at: string;
+  completed_at: string;
+  status: 'done' | 'error';
+  result?: {
+    total: number;
+    succeeded: number;
+    failed: number;
+    message: string;
+  };
+  error?: { code: string; message: string };
+  entity_results: Record<
+    string,
+    {
+      status: 'done' | 'error';
+      sub_job_id?: string;
+      result?: Record<string, unknown>;
+      error?: string;
+    }
+  >;
+  entries: LogEntry[];
+}
+
+/**
+ * Write job log to the job collection.
+ *
+ * Creates a new file entity in the job collection, then updates the collection
+ * to add "contains" relationship with CAS retry.
+ */
 export async function writeJobLog(
   client: ArkeClient,
-  logPi: string,
-  log: {
-    job_id: string;
-    agent_id: string;
-    agent_version: string;
-    started_at: string;
-    completed_at: string;
-    status: 'done' | 'error';
-    result?: {
-      total: number;
-      succeeded: number;
-      failed: number;
-      message: string;
-    };
-    error?: { code: string; message: string };
-    entity_results: Record<
-      string,
-      {
-        status: 'done' | 'error';
-        sub_job_id?: string;
-        result?: Record<string, unknown>;
-        error?: string;
-      }
-    >;
-    entries: LogEntry[];
-  }
+  jobCollection: string,
+  log: OrchestratorLogData
 ): Promise<void> {
-  // Get current file to get CID for CAS
-  const { data: file } = await client.api.GET('/files/{id}', {
-    params: { path: { id: logPi } },
+  const filename = `${log.job_id}.json`;
+
+  // Step 1: Create file in the job collection
+  const { data: file, error: createError } = await client.api.POST('/files', {
+    body: {
+      key: filename, // S3 key
+      collection: jobCollection,
+      filename,
+      content_type: 'application/json',
+      size: 0, // Metadata-only file
+      relationships: [
+        { predicate: 'in', peer: jobCollection, peer_type: 'collection' }
+      ],
+      properties: {
+        log_data: log,
+      },
+      description: `Orchestrator job log for ${log.job_id}`,
+    },
   });
 
-  if (!file) {
-    console.error(`[logger] Log file not found: ${logPi}`);
+  if (createError || !file) {
+    console.error(`[logger] Failed to create log file:`, createError);
     return;
   }
 
-  // Update file with log data in extra_properties
-  await client.api.PUT('/files/{id}', {
-    params: { path: { id: logPi } },
-    body: {
-      expect_tip: file.cid,
-      extra_properties: {
-        log_data: log,
-        log_written_at: new Date().toISOString(),
-      },
-      note: `Log written by ${log.agent_id}`,
-    },
-  });
+  console.log(`[logger] Created log file ${file.id} in collection ${jobCollection}`);
+
+  // Step 2: Update collection to add "contains" relationship with CAS retry
+  const maxRetries = 5;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Get current collection CID
+      const { data: collection } = await client.api.GET('/collections/{id}', {
+        params: { path: { id: jobCollection } },
+      });
+
+      if (!collection) {
+        console.error(`[logger] Job collection not found: ${jobCollection}`);
+        return;
+      }
+
+      // Update with contains relationship
+      const { error: updateError } = await client.api.PUT('/collections/{id}', {
+        params: { path: { id: jobCollection } },
+        body: {
+          expect_tip: collection.cid,
+          relationships_add: [
+            { predicate: 'contains', peer: file.id, peer_type: 'file' }
+          ],
+          note: `Added log file ${file.id}`,
+        },
+      });
+
+      if (updateError) {
+        // Check if it's a CAS conflict
+        const errorStr = JSON.stringify(updateError);
+        if (errorStr.includes('409') || errorStr.includes('Conflict')) {
+          if (attempt < maxRetries - 1) {
+            const delay = Math.pow(2, attempt) * 100 + Math.random() * 100;
+            console.log(`[logger] CAS conflict, retrying in ${delay}ms...`);
+            await sleep(delay);
+            continue;
+          }
+        }
+        console.error(`[logger] Failed to update collection:`, updateError);
+        return;
+      }
+
+      console.log(`[logger] Updated collection ${jobCollection} with contains relationship`);
+      return;
+    } catch (err) {
+      console.error(`[logger] Error updating collection (attempt ${attempt + 1}):`, err);
+      if (attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 100 + Math.random() * 100;
+        await sleep(delay);
+      }
+    }
+  }
+
+  console.error(`[logger] Failed to update collection after ${maxRetries} retries`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

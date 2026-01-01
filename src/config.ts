@@ -3,10 +3,10 @@
 // ============================================================================
 
 /** The sub-agent this orchestrator dispatches to */
-export const SUB_AGENT_ID = 'YOUR_SUB_AGENT_PI_HERE';
+export const SUB_AGENT_ID = '01KDVZD6VJKKXNNPB21MWWCHFZ';
 
 /** The sub-agent's endpoint URL (for status polling) */
-export const SUB_AGENT_ENDPOINT = 'https://your-sub-agent.arke.institute';
+export const SUB_AGENT_ENDPOINT = 'https://agent-template.arke.institute';
 
 /** Options that can be passed in input.options */
 export interface OrchestratorOptions {

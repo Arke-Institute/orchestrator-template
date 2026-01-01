@@ -1,12 +1,12 @@
 {
   "label": "Orchestrator Template",
-  "description": "Template orchestrator - customize this description",
+  "description": "Template orchestrator - dispatches work to sub-agents",
   "endpoint": "https://orchestrator-template.arke.institute",
   "actions_required": ["entity:view"],
   "uses_agents": [
     {
-      "pi": "01SUB_AGENT_PI_HERE",
-      "label": "Sub-Agent Name",
+      "pi": "01KDVZD6VJKKXNNPB21MWWCHFZ",
+      "label": "Agent Template",
       "actions_required": ["entity:view", "entity:update"]
     }
   ],
