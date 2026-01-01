@@ -1,0 +1,31 @@
+{
+  "label": "Orchestrator Template",
+  "description": "Template orchestrator - customize this description",
+  "endpoint": "https://orchestrator-template.arke.institute",
+  "actions_required": ["entity:view"],
+  "uses_agents": [
+    {
+      "pi": "01SUB_AGENT_PI_HERE",
+      "label": "Sub-Agent Name",
+      "actions_required": ["entity:view", "entity:update"]
+    }
+  ],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "entity_ids": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Entities to process"
+      },
+      "options": {
+        "type": "object",
+        "properties": {
+          "concurrency": { "type": "number", "description": "Max parallel sub-agents" },
+          "max_retries": { "type": "number", "description": "Retries per entity" }
+        }
+      }
+    },
+    "required": ["entity_ids"]
+  }
+}
