@@ -21,12 +21,12 @@ export async function getArkePublicKey(apiBase: string): Promise<Uint8Array> {
 
   const data = (await response.json()) as SigningKeyInfo;
 
-  if (data.algorithm !== 'ed25519') {
+  if (data.algorithm.toLowerCase() !== 'ed25519') {
     throw new Error(`Unsupported algorithm: ${data.algorithm}`);
   }
 
-  // Decode hex public key
-  const keyBytes = hexToBytes(data.public_key);
+  // Decode public key (base64 encoded)
+  const keyBytes = base64ToBytes(data.public_key);
   cachedKey = { key: keyBytes, fetchedAt: Date.now() };
 
   return keyBytes;
@@ -97,8 +97,8 @@ export async function verifyArkeSignature(
     const message = `${timestamp}.${body}`;
     const messageBytes = new TextEncoder().encode(message);
 
-    // Decode signature from hex
-    const signatureBytes = hexToBytes(signature);
+    // Decode signature from base64
+    const signatureBytes = base64ToBytes(signature);
 
     // Verify
     const valid = await ed.verifyAsync(signatureBytes, messageBytes, publicKey);
@@ -123,6 +123,18 @@ function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+/**
+ * Convert base64 string to Uint8Array
+ */
+function base64ToBytes(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
 }
