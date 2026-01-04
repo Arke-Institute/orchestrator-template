@@ -16,7 +16,7 @@
       "entity_ids": {
         "type": "array",
         "items": { "type": "string" },
-        "description": "Entities to process"
+        "description": "Optional: explicit entities to process (overrides discovery). If omitted, discovers all entities in target collection."
       },
       "options": {
         "type": "object",
@@ -25,7 +25,6 @@
           "max_retries": { "type": "number", "description": "Retries per entity" }
         }
       }
-    },
-    "required": ["entity_ids"]
+    }
   }
 }

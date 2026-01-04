@@ -6,11 +6,15 @@ export interface JobRequest {
   target: string;
   job_collection: string; // Where to write logs
   input: {
-    entity_ids: string[];
+    // Optional: explicit list of entities to process (overrides discovery)
+    // If omitted, orchestrator will discover all entities in target collection
+    // TODO: Discovery mode not yet implemented - requires Neo4j index endpoint
+    entity_ids?: string[];
     options?: OrchestratorOptions;
   };
   api_base: string;
   expires_at: string;
+  network: 'test' | 'main'; // Which network to use for API calls
 }
 
 // Per-entity tracking
@@ -41,6 +45,7 @@ export interface JobState {
   job_collection: string;
   api_base: string;
   expires_at: string;
+  network: 'test' | 'main';
   options?: OrchestratorOptions;
 
   // Per-entity tracking

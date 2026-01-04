@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "deploy:worker": "wrangler deploy",
-    "register": "./scripts/register.sh",
-    "deploy:full": "npm run deploy:worker && npm run register",
+    "register": "npx tsx scripts/register.ts",
+    "register:prod": "npx tsx scripts/register.ts --production",
+    "setup": "npm run deploy && npm run register",
+    "setup:prod": "npm run deploy && npm run register:prod",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

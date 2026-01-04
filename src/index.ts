@@ -84,10 +84,18 @@ app.post('/process', async (c) => {
     );
   }
 
+  // TODO: Discovery mode (default when entity_ids not provided)
+  // When Neo4j index is ready, call GET /collections/{target}/entities to discover
+  // all entities owned by the target collection. This will replace the entity_ids
+  // requirement - explicit entity_ids will become an override for discovery.
+  // Discovery rules:
+  // - Returns all entities where owner = target collection
+  // - Single graph query, no client-side traversal needed
+  // - Filters (e.g., type='file') can be applied after discovery
   const entityIds = jobRequest.input?.entity_ids;
   if (!entityIds || entityIds.length === 0) {
     return c.json<JobResponse>(
-      { accepted: false, error: 'Missing or empty entity_ids in input' },
+      { accepted: false, error: 'Missing or empty entity_ids in input (discovery mode not yet implemented)' },
       400
     );
   }
@@ -125,6 +133,7 @@ app.post('/process', async (c) => {
     job_collection: jobRequest.job_collection,
     api_base: jobRequest.api_base,
     expires_at: jobRequest.expires_at,
+    network: jobRequest.network,
     options: jobRequest.input.options,
     entities,
     progress: {
@@ -160,6 +169,7 @@ async function processJob(env: Env, state: JobState): Promise<void> {
   const client = new ArkeClient({
     baseUrl: state.api_base,
     authToken: env.ARKE_API_KEY,
+    network: state.network,
   });
 
   // Update state to running

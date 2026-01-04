@@ -2,67 +2,105 @@
 
 Template for Arke orchestrator agents that dispatch work to sub-agents. Fork this to create orchestrators like `description-orchestrator`, `ocr-orchestrator`, etc.
 
-## Quick Start
+## Authentication Model
 
-1. **Copy this template**
-   ```bash
-   cp -r orchestrator-template my-orchestrator
-   cd my-orchestrator
-   ```
+Agents in Arke have their own identity and credentials, separate from your user account:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+| Key Type | Format | Used For |
+|----------|--------|----------|
+| **User API Key** | `uk_*` | You use this to register/manage agents (admin actions) |
+| **Agent API Key** | `ak_*` | The deployed worker uses this to call Arke API at runtime |
 
-3. **Update configuration**
-   - `wrangler.jsonc`: Change `name`, domain, `AGENT_ID`
-   - `config.ts`: Set `SUB_AGENT_ID`, `SUB_AGENT_ENDPOINT`
-   - `agent.json`: Set `label`, `description`, `endpoint`, `uses_agents`
-   - `package.json`: Update `name`
+When you register an orchestrator, Arke creates an agent entity and generates an agent-specific API key. This key is what your worker uses when dispatching to sub-agents.
 
-4. **Create KV namespace**
-   ```bash
-   wrangler kv:namespace create JOBS
-   # Copy the ID to wrangler.jsonc
-   ```
+## Setup
 
-5. **Authenticate with Arke**
-   ```bash
-   arke auth set-api-key uk_your_api_key
-   ```
+### 1. Clone and configure
 
-6. **Deploy and register**
-   ```bash
-   npm run deploy:full
-   ```
+```bash
+cp -r orchestrator-template my-orchestrator
+cd my-orchestrator
+npm install
+```
 
-7. **Set the orchestrator API key**
-   ```bash
-   wrangler secret put ARKE_API_KEY
-   # Paste the ak_* key from registration output
-   ```
+Update these files with your orchestrator's details:
+- `wrangler.jsonc`: Change `name`, domain, `AGENT_ID`
+- `src/config.ts`: Set `SUB_AGENT_ID`, `SUB_AGENT_ENDPOINT`
+- `agent.json`: Set `label`, `description`, `endpoint`, `uses_agents`
+- `package.json`: Update `name`
+
+### 2. Create KV namespace
+
+```bash
+wrangler kv:namespace create JOBS
+# Copy the ID to wrangler.jsonc
+```
+
+### 3. Deploy the worker
+
+```bash
+npm run deploy
+```
+
+### 4. Register the orchestrator with Arke
+
+This step uses your **user API key** to create the orchestrator and generate its credentials.
+
+```bash
+# Set your user API key for registration
+export ARKE_API_KEY=uk_your_user_key
+
+# Register (creates orchestrator, generates agent key)
+npm run register
+```
+
+On first run, this will:
+1. Create the orchestrator entity in Arke
+2. Register the `uses_agents` dependencies (sub-agents it will invoke)
+3. Activate it
+4. Generate an agent API key (`ak_*`)
+5. Print the key (save it!)
+
+### 5. Configure the worker with the agent key
+
+Set the **agent API key** (from step 4) as a Cloudflare secret:
+
+```bash
+wrangler secret put ARKE_API_KEY
+# Paste the ak_* key from registration output
+```
+
+Your orchestrator is now deployed and registered.
+
+## Development
+
+```bash
+npm run dev          # Run locally
+npm run deploy       # Deploy to Cloudflare
+npm run register     # Register/update in Arke (test network)
+npm run register:prod # Register on production network
+npm run type-check
+```
 
 ## Project Structure
 
 ```
 my-orchestrator/
-├── package.json
-├── wrangler.jsonc        # Cloudflare Worker config
-├── tsconfig.json
 ├── agent.json            # Agent manifest (includes uses_agents)
+├── wrangler.jsonc        # Cloudflare Worker config
+├── .agent-id             # Created after first registration (test)
+├── .agent-id.prod        # Created after first registration (prod)
 ├── scripts/
-│   └── register.sh       # Registration script
-├── .agent-id             # Created after first registration
+│   └── register.ts       # Registration script
 └── src/
-    ├── index.ts          # Hono app entry point
+    ├── index.ts          # HTTP endpoints (don't modify)
+    ├── verify.ts         # Signature verification (don't modify)
+    ├── state.ts          # KV state management (don't modify)
+    ├── logger.ts         # Job logger (don't modify)
+    ├── dispatcher.ts     # Sub-agent dispatch + polling (don't modify)
     ├── env.ts            # Environment bindings
     ├── types.ts          # Job types with per-entity tracking
-    ├── verify.ts         # Ed25519 signature verification
-    ├── state.ts          # KV state management with progress
-    ├── logger.ts         # Job logger
-    ├── config.ts         # SUB-AGENT CONFIGURATION
-    └── dispatcher.ts     # Sub-agent dispatch + polling
+    └── config.ts         # YOUR CONFIGURATION
 ```
 
 ## Key Configuration
@@ -98,24 +136,43 @@ export const DEFAULT_CONFIG = {
 
 **Important**: `uses_agents` tells Arke to pre-grant permissions to sub-agents when the orchestrator is invoked.
 
+## How It Works
+
+1. Arke invokes orchestrator via `POST /process` with `target` collection
+2. Orchestrator discovers entities to process (or uses explicit `entity_ids` if provided)
+3. Creates per-entity tracking state
+4. For each entity (with concurrency limit):
+   - Dispatch to sub-agent via `POST /agents/{id}/invoke`
+   - Poll sub-agent status until done/error
+   - Retry on failure (up to `max_retries`)
+5. Aggregate results and update overall status
+6. Write summary log to job collection
+7. Arke polls `/status/:job_id` for completion
+
+## Entity Discovery (Coming Soon)
+
+By default, the orchestrator will discover all entities owned by the `target` collection. This is the primary mode of operation - you invoke the orchestrator on a collection and it processes everything in it.
+
+**Explicit `entity_ids`** is an override for when you want to process a specific subset.
+
+```typescript
+// Discovery mode (default) - process all entities in collection
+{ "target": "01MY_COLLECTION" }
+
+// Override mode - process only these specific entities
+{ "target": "01MY_COLLECTION", "input": { "entity_ids": ["01A", "01B"] } }
+```
+
+> **Note**: Discovery mode requires the Neo4j index endpoint (`GET /collections/{id}/entities`).
+> Until then, `entity_ids` is required.
+
 ## Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Health check |
-| `POST /process` | Receive batch job from Arke |
+| `POST /process` | Receive batch job from Arke (signature verified) |
 | `GET /status/:job_id` | Poll job status with progress |
-
-## How It Works
-
-1. Arke invokes orchestrator via `POST /process` with `entity_ids` array
-2. Orchestrator creates per-entity tracking state
-3. For each entity (with concurrency limit):
-   - Dispatch to sub-agent via `POST /agents/{id}/invoke`
-   - Poll sub-agent status until done/error
-   - Retry on failure (up to `max_retries`)
-4. Aggregate results and update overall status
-5. Write summary log to log file entity
 
 ## Status Response
 
@@ -134,15 +191,6 @@ export const DEFAULT_CONFIG = {
 }
 ```
 
-## Development
-
-```bash
-npm run dev       # Run locally
-npm run deploy    # Deploy to Cloudflare
-npm run register  # Register/update in Arke
-npm run type-check
-```
-
 ## Workflow
 
 ### 1. Create Sub-Agent First
@@ -151,7 +199,7 @@ npm run type-check
 cp -r agent-template description-agent
 cd description-agent
 # Customize and deploy
-npm run deploy:full
+npm run setup
 # Note the returned agent ID
 ```
 
@@ -164,12 +212,21 @@ cd description-orchestrator
 # Update config.ts with sub-agent ID
 # Update agent.json uses_agents
 # Deploy
-npm run deploy:full
+npm run setup
 ```
 
 ### 3. Invoke Orchestrator
 
 ```bash
+# Discovery mode (future default) - process all entities in collection
+curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "target": "01MY_COLLECTION",
+    "confirm": true
+  }'
+
+# Override mode - process specific entities only (currently required)
 curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
