@@ -149,9 +149,9 @@ export const DEFAULT_CONFIG = {
 6. Write summary log to job collection
 7. Arke polls `/status/:job_id` for completion
 
-## Entity Discovery (Coming Soon)
+## Entity Discovery
 
-By default, the orchestrator will discover all entities owned by the `target` collection. This is the primary mode of operation - you invoke the orchestrator on a collection and it processes everything in it.
+By default, the orchestrator discovers all entities owned by the `target` collection. This is the primary mode of operation - you invoke the orchestrator on a collection and it processes everything in it.
 
 **Explicit `entity_ids`** is an override for when you want to process a specific subset.
 
@@ -159,12 +159,14 @@ By default, the orchestrator will discover all entities owned by the `target` co
 // Discovery mode (default) - process all entities in collection
 { "target": "01MY_COLLECTION" }
 
+// With type filter - only discover files, skip collections
+{ "target": "01MY_COLLECTION", "input": { "options": { "discover_type": "file" } } }
+
 // Override mode - process only these specific entities
 { "target": "01MY_COLLECTION", "input": { "entity_ids": ["01A", "01B"] } }
 ```
 
-> **Note**: Discovery mode requires the Neo4j index endpoint (`GET /collections/{id}/entities`).
-> Until then, `entity_ids` is required.
+Discovery uses `GET /collections/{id}/entities` with pagination to fetch all entities owned by the collection.
 
 ## Endpoints
 
@@ -218,7 +220,7 @@ npm run setup
 ### 3. Invoke Orchestrator
 
 ```bash
-# Discovery mode (future default) - process all entities in collection
+# Discovery mode (default) - process all entities in collection
 curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -226,7 +228,16 @@ curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
     "confirm": true
   }'
 
-# Override mode - process specific entities only (currently required)
+# Discovery with type filter - only process files
+curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "target": "01MY_COLLECTION",
+    "input": { "options": { "discover_type": "file" } },
+    "confirm": true
+  }'
+
+# Override mode - process specific entities only
 curl -X POST https://arke-v1.arke.institute/agents/01ORCH_ID/invoke \
   -H "Authorization: Bearer $TOKEN" \
   -d '{

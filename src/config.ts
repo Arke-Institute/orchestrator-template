@@ -12,6 +12,12 @@ export const SUB_AGENT_ENDPOINT = 'https://agent-template.arke.institute';
 export interface OrchestratorOptions {
   max_retries?: number;
   concurrency?: number;
+
+  // Discovery options
+  // Filter entities by type during discovery (e.g., 'file' to only process files)
+  // Useful when collection contains mixed entity types but you only want to process some
+  discover_type?: string;
+
   // Add your orchestrator-specific options here
   // These get passed through to the sub-agent
 }

@@ -22,7 +22,8 @@
         "type": "object",
         "properties": {
           "concurrency": { "type": "number", "description": "Max parallel sub-agents" },
-          "max_retries": { "type": "number", "description": "Retries per entity" }
+          "max_retries": { "type": "number", "description": "Retries per entity" },
+          "discover_type": { "type": "string", "description": "Filter discovery by entity type (e.g., 'file')" }
         }
       }
     }

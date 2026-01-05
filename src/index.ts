@@ -17,6 +17,7 @@ import {
   pollSubAgentStatus,
   PromisePool,
 } from './dispatcher';
+import { discoverEntities } from './discovery';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -84,23 +85,7 @@ app.post('/process', async (c) => {
     );
   }
 
-  // TODO: Discovery mode (default when entity_ids not provided)
-  // When Neo4j index is ready, call GET /collections/{target}/entities to discover
-  // all entities owned by the target collection. This will replace the entity_ids
-  // requirement - explicit entity_ids will become an override for discovery.
-  // Discovery rules:
-  // - Returns all entities where owner = target collection
-  // - Single graph query, no client-side traversal needed
-  // - Filters (e.g., type='file') can be applied after discovery
-  const entityIds = jobRequest.input?.entity_ids;
-  if (!entityIds || entityIds.length === 0) {
-    return c.json<JobResponse>(
-      { accepted: false, error: 'Missing or empty entity_ids in input (discovery mode not yet implemented)' },
-      400
-    );
-  }
-
-  // 4. Check API key configured
+  // 4. Check API key configured (needed for discovery)
   if (!env.ARKE_API_KEY) {
     return c.json<JobResponse>(
       { accepted: false, error: 'Agent not configured', retry_after: 60 },
@@ -108,8 +93,48 @@ app.post('/process', async (c) => {
     );
   }
 
-  // 5. Build config from defaults + options
-  const options = jobRequest.input.options ?? {};
+  // 5. Determine entity IDs - use explicit list or discover from collection
+  // Discovery is the default behavior when entity_ids is not provided.
+  // Explicit entity_ids overrides discovery for processing a specific subset.
+  // Note: For type filtering (e.g., only files), pass options.discover_type
+  let entityIds = jobRequest.input?.entity_ids;
+
+  if (!entityIds || entityIds.length === 0) {
+    // Discovery mode: fetch all entities owned by the target collection
+    console.log(`[${env.AGENT_ID}] Discovering entities in collection ${jobRequest.target}`);
+
+    const client = new ArkeClient({
+      baseUrl: jobRequest.api_base,
+      authToken: env.ARKE_API_KEY,
+      network: jobRequest.network,
+    });
+
+    try {
+      entityIds = await discoverEntities(client, jobRequest.target, {
+        // Optional type filter - useful for orchestrators that only process
+        // specific entity types (e.g., type: 'file' to skip collections)
+        type: jobRequest.input?.options?.discover_type,
+      });
+    } catch (err) {
+      console.error(`[${env.AGENT_ID}] Discovery failed:`, err);
+      return c.json<JobResponse>(
+        { accepted: false, error: `Discovery failed: ${err instanceof Error ? err.message : 'Unknown error'}` },
+        500
+      );
+    }
+
+    if (entityIds.length === 0) {
+      return c.json<JobResponse>(
+        { accepted: false, error: 'No entities found in collection' },
+        400
+      );
+    }
+
+    console.log(`[${env.AGENT_ID}] Discovered ${entityIds.length} entities`);
+  }
+
+  // 6. Build config from defaults + options
+  const options = jobRequest.input?.options ?? {};
   const config = {
     max_retries: options.max_retries ?? DEFAULT_CONFIG.max_retries,
     concurrency: options.concurrency ?? DEFAULT_CONFIG.concurrency,
@@ -117,7 +142,7 @@ app.post('/process', async (c) => {
     poll_timeout_ms: DEFAULT_CONFIG.poll_timeout_ms,
   };
 
-  // 6. Create initial job state with entity tracking
+  // 7. Create initial job state with entity tracking
   const entities: Record<string, EntityStatus> = {};
   for (const entityId of entityIds) {
     entities[entityId] = {
@@ -134,7 +159,7 @@ app.post('/process', async (c) => {
     api_base: jobRequest.api_base,
     expires_at: jobRequest.expires_at,
     network: jobRequest.network,
-    options: jobRequest.input.options,
+    options: jobRequest.input?.options,
     entities,
     progress: {
       total: entityIds.length,
@@ -149,14 +174,14 @@ app.post('/process', async (c) => {
 
   await saveJobState(env.JOBS, jobState);
 
-  // 7. Start background processing
+  // 8. Start background processing
   c.executionCtx.waitUntil(
     processJob(env, jobState).catch((err) => {
       console.error(`[${env.AGENT_ID}] Background processing error:`, err);
     })
   );
 
-  // 8. Return immediately
+  // 9. Return immediately
   return c.json<JobResponse>({ accepted: true, job_id: jobRequest.job_id });
 });
 
