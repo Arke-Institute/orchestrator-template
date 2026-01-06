@@ -2,7 +2,7 @@
   "label": "Orchestrator Template",
   "description": "Template orchestrator - dispatches work to sub-agents",
   "endpoint": "https://orchestrator-template.arke.institute",
-  "actions_required": ["entity:view"],
+  "actions_required": ["entity:view", "collection:view"],
   "uses_agents": [
     {
       "pi": "01KDVZD6VJKKXNNPB21MWWCHFZ",

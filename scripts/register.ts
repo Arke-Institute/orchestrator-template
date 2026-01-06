@@ -133,13 +133,11 @@ async function main() {
           label: agentConfig.label,
           description: agentConfig.description,
           endpoint: agentConfig.endpoint,
+          actions_required: agentConfig.actions_required,
+          input_schema: agentConfig.input_schema,
+          uses_agents: agentConfig.uses_agents,
         },
       };
-
-      // Include uses_agents if present
-      if (agentConfig.uses_agents) {
-        updateBody.uses_agents = agentConfig.uses_agents;
-      }
 
       await apiRequest('PUT', `/agents/${agentId}`, updateBody);
 
