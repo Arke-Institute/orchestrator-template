@@ -5,7 +5,7 @@
   "actions_required": ["entity:view", "collection:view"],
   "uses_agents": [
     {
-      "pi": "01KDVZD6VJKKXNNPB21MWWCHFZ",
+      "pi": "01KDZS65ME3A5N2Y5PGV6EKFS2",
       "label": "Agent Template",
       "actions_required": ["entity:view", "entity:update"]
     }

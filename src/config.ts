@@ -3,7 +3,7 @@
 // ============================================================================
 
 /** The sub-agent this orchestrator dispatches to */
-export const SUB_AGENT_ID = '01KDVZD6VJKKXNNPB21MWWCHFZ';
+export const SUB_AGENT_ID = '01KDZS65ME3A5N2Y5PGV6EKFS2';
 
 /** The sub-agent's endpoint URL (for status polling) */
 export const SUB_AGENT_ENDPOINT = 'https://agent-template.arke.institute';
