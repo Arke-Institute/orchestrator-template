@@ -1,12 +1,7 @@
-export interface Env {
-  // KV for job state
-  JOBS: KVNamespace;
+import type { BaseAgentEnv } from '@arke-institute/agent-core';
+import type { OrchestratorJob } from './orchestrator-job';
 
-  // Agent configuration
-  ARKE_API_KEY: string; // Secret: orchestrator's API key
-  ARKE_API_BASE: string; // Default: https://arke-v1.arke.institute
-
-  // Agent identity (for logging)
-  AGENT_ID: string; // e.g., "description-orchestrator"
-  AGENT_VERSION: string; // e.g., "1.0.0"
+export interface OrchestratorEnv extends BaseAgentEnv {
+  // Durable Object namespace for job management
+  ORCHESTRATOR_JOBS: DurableObjectNamespace<OrchestratorJob>;
 }

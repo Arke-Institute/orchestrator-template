@@ -3,9 +3,7 @@
   // TEMPLATE: Fork this for your orchestrator
   // 1. Change "name" to your orchestrator name (e.g., "arke-description-orchestrator")
   // 2. Update the custom domain pattern
-  // 3. Create a new KV namespace: wrangler kv:namespace create JOBS
-  // 4. Update the KV namespace ID below
-  // 5. Set secrets: wrangler secret put ARKE_API_KEY
+  // 3. Set secrets: wrangler secret put ARKE_API_KEY
   // ============================================================================
 
   "name": "arke-orchestrator-template",
@@ -19,10 +17,21 @@
 
   "workers_dev": true,
 
-  "kv_namespaces": [
+  // === DURABLE OBJECTS ===
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ORCHESTRATOR_JOBS",
+        "class_name": "OrchestratorJob"
+      }
+    ]
+  },
+
+  // === MIGRATIONS (required for DO) ===
+  "migrations": [
     {
-      "binding": "JOBS",
-      "id": "b6b08e01b6f64128b1af90e5f5e25ae9"
+      "tag": "v1",
+      "new_classes": ["OrchestratorJob"]
     }
   ],
 

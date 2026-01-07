@@ -13,8 +13,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@arke-institute/agent-core": "file:../agent-core",
     "@arke-institute/sdk": "^2.3.0",
-    "@noble/ed25519": "^2.2.3",
     "hono": "^4.6.0"
   },
   "devDependencies": {
