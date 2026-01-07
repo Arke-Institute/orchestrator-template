@@ -22,12 +22,22 @@ export interface OrchestratorOptions {
   // These get passed through to the sub-agent
 }
 
-/** Default configuration */
+/**
+ * Default configuration
+ *
+ * TIMEOUT CONFIGURATION:
+ * - poll_interval_ms: How often to check if sub-agent tasks have completed
+ * - poll_timeout_ms: Maximum time to wait for EACH ENTITY's sub-agent task to complete
+ *   This is PER ENTITY, not total. If you have 100 entities, each gets this timeout independently.
+ *
+ * For long-running agent tasks (e.g., LLM processing, large file operations),
+ * increase poll_timeout_ms accordingly. A 10-minute task needs poll_timeout_ms > 600000.
+ */
 export const DEFAULT_CONFIG = {
   max_retries: 3,
   concurrency: 5,
-  poll_interval_ms: 2000, // Poll every 2 seconds
-  poll_timeout_ms: 300000, // 5 minutes timeout per entity
+  poll_interval_ms: 2000, // How often to poll sub-agent status (ms)
+  poll_timeout_ms: 300000, // Max wait time PER ENTITY before timeout (5 minutes)
 };
 
 /**
