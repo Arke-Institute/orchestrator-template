@@ -2,11 +2,17 @@
 // CUSTOMIZE THESE FOR YOUR ORCHESTRATOR
 // ============================================================================
 
-/** The sub-agent this orchestrator dispatches to */
-export const SUB_AGENT_ID = '01KDZS65ME3A5N2Y5PGV6EKFS2';
+/**
+ * The sub-agent this orchestrator dispatches to.
+ * Replace with your agent's ID after registration.
+ */
+export const SUB_AGENT_ID = 'YOUR_AGENT_ID_HERE';
 
-/** The sub-agent's endpoint URL (for status polling) */
-export const SUB_AGENT_ENDPOINT = 'https://agent-template.arke.institute';
+/**
+ * The sub-agent's endpoint URL (for status polling).
+ * Replace with your agent's deployed endpoint.
+ */
+export const SUB_AGENT_ENDPOINT = 'https://your-agent.arke.institute';
 
 /** Options that can be passed in input.options */
 export interface OrchestratorOptions {
