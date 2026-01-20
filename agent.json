@@ -1,0 +1,31 @@
+{
+  "label": "Orchestrator Template",
+  "description": "Template orchestrator - dispatches work to sub-agents",
+  "endpoint": "https://orchestrator-template.arke.institute",
+  "actions_required": ["entity:view", "collection:view"],
+  "uses_agents": [
+    {
+      "pi": "01KDZS65ME3A5N2Y5PGV6EKFS2",
+      "label": "Agent Template",
+      "actions_required": ["entity:view", "entity:update"]
+    }
+  ],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "entity_ids": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Optional: explicit entities to process (overrides discovery). If omitted, discovers all entities in target collection."
+      },
+      "options": {
+        "type": "object",
+        "properties": {
+          "concurrency": { "type": "number", "description": "Max parallel sub-agents" },
+          "max_retries": { "type": "number", "description": "Retries per entity" },
+          "discover_type": { "type": "string", "description": "Filter discovery by entity type (e.g., 'file')" }
+        }
+      }
+    }
+  }
+}

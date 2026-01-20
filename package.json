@@ -1,0 +1,25 @@
+{
+  "name": "arke-orchestrator-template",
+  "version": "1.0.0",
+  "description": "Template for Arke orchestrator agents - fork this to create orchestrators",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "register": "npx tsx scripts/register.ts",
+    "register:prod": "npx tsx scripts/register.ts --production",
+    "setup": "npm run deploy && npm run register",
+    "setup:prod": "npm run deploy && npm run register:prod",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@arke-institute/agent-core": "^1.0.0",
+    "@arke-institute/sdk": "^2.3.0",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241205.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^4.0.0"
+  }
+}
